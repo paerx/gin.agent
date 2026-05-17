@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/agent"
 )
 
 func ParseAgentInput(req EventRequest) (*agent.AgentInput, bool, error) {

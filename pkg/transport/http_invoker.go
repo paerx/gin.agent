@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/ginai"
 )
 
 type Invoker interface {

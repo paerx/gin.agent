@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/agent"
 
 	larkevent "github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"

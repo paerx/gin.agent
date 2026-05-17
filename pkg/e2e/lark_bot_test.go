@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	larkadapter "gin.agent/pkg/adapter/lark"
-	"gin.agent/pkg/agent"
-	"gin.agent/pkg/auth"
-	"gin.agent/pkg/ginai"
-	"gin.agent/pkg/storage"
-	"gin.agent/pkg/transport"
+	larkadapter "github.com/paerx/gin.agent/pkg/adapter/lark"
+	"github.com/paerx/gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/auth"
+	"github.com/paerx/gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/storage"
+	"github.com/paerx/gin.agent/pkg/transport"
 
 	"github.com/gin-gonic/gin"
 )

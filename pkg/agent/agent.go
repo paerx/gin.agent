@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"gin.agent/pkg/audit"
-	"gin.agent/pkg/auth"
-	"gin.agent/pkg/ginai"
-	"gin.agent/pkg/transport"
+	"github.com/paerx/gin.agent/pkg/audit"
+	"github.com/paerx/gin.agent/pkg/auth"
+	"github.com/paerx/gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/transport"
 )
 
 type Agent interface {

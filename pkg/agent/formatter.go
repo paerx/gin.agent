@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"gin.agent/pkg/audit"
-	"gin.agent/pkg/ginai"
-	"gin.agent/pkg/transport"
+	"github.com/paerx/gin.agent/pkg/audit"
+	"github.com/paerx/gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/transport"
 )
 
 type Formatter interface {

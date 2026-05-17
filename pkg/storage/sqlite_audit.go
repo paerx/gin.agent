@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"gin.agent/pkg/audit"
+	"github.com/paerx/gin.agent/pkg/audit"
 
 	_ "modernc.org/sqlite"
 )

@@ -2,18 +2,17 @@ package main
 
 import (
 	"context"
+	"github.com/paerx/gin.agent/pkg/adapter/lark"
+	"github.com/paerx/gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/audit"
+	"github.com/paerx/gin.agent/pkg/auth"
+	"github.com/paerx/gin.agent/pkg/config"
+	"github.com/paerx/gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/storage"
+	"github.com/paerx/gin.agent/pkg/transport"
 	"net/http"
 	"os"
 	"strings"
-
-	"gin.agent/pkg/adapter/lark"
-	"gin.agent/pkg/agent"
-	"gin.agent/pkg/audit"
-	"gin.agent/pkg/auth"
-	"gin.agent/pkg/config"
-	"gin.agent/pkg/ginai"
-	"gin.agent/pkg/storage"
-	"gin.agent/pkg/transport"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -43,7 +42,6 @@ func main() {
 	registry := ginai.NewRegistry()
 	ginAgent := ginai.NewBinder(registry)
 	registerDemoTools(registry)
-
 	memoryStore := buildMemoryStore(cfg)
 
 	auditStore, err := storage.NewSQLiteAuditStore(cfg.Audit.DSN)

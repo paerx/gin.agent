@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/agent"
 
 	"github.com/gin-gonic/gin"
 )

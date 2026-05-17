@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/agent"
 )
 
 func TestMemoryStore(t *testing.T) {

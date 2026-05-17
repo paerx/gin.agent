@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/ginai"
 )
 
 var (

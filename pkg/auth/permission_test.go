@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/ginai"
 )
 
 func TestPermissionChecker(t *testing.T) {

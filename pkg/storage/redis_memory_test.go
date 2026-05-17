@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/agent"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"

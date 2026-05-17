@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"gin.agent/pkg/agent"
-	"gin.agent/pkg/auth"
-	"gin.agent/pkg/ginai"
-	"gin.agent/pkg/storage"
-	"gin.agent/pkg/transport"
+	"github.com/paerx/gin.agent/pkg/agent"
+	"github.com/paerx/gin.agent/pkg/auth"
+	"github.com/paerx/gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/storage"
+	"github.com/paerx/gin.agent/pkg/transport"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gin.agent/pkg/ginai"
+	"github.com/paerx/gin.agent/pkg/ginai"
 )
 
 func TestHTTPInvokerGET(t *testing.T) {
