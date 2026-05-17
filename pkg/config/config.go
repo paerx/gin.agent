@@ -35,10 +35,12 @@ type Config struct {
 		DSN    string
 	}
 	GinAI struct {
-		BaseURL       string
-		InternalToken string
-		ContextTTL    time.Duration
-		MaxHistory    int64
+		BaseURL            string
+		InternalToken      string
+		ContextTTL         time.Duration
+		MaxHistory         int64
+		MaxContextMessages int
+		MaxContextChars    int
 	}
 }
 
@@ -65,6 +67,8 @@ func LoadFromEnv() Config {
 	cfg.GinAI.InternalToken = env("GINAI_INTERNAL_TOKEN", "dev-internal-token")
 	cfg.GinAI.ContextTTL = envDuration("GINAI_CONTEXT_TTL", 168*time.Hour)
 	cfg.GinAI.MaxHistory = int64(envInt("GINAI_MAX_HISTORY", 30))
+	cfg.GinAI.MaxContextMessages = envInt("GINAI_MAX_CONTEXT_MESSAGES", 28)
+	cfg.GinAI.MaxContextChars = envInt("GINAI_MAX_CONTEXT_CHARS", 12000)
 	return cfg
 }
 

@@ -67,11 +67,12 @@ func (b *Bot) HandleEvent(c *gin.Context) {
 		return
 	}
 	log.Printf(
-		"[lark event] platform=%s chat_id=%s chat_type=%s user_id=%s message_id=%s text=%q",
+		"[lark event] platform=%s chat_id=%s chat_type=%s user_id=%s display_name=%s message_id=%s text=%q",
 		input.Platform,
 		input.ChatID,
 		input.ChatType,
 		input.UserID,
+		input.DisplayName,
 		input.MessageID,
 		input.Text,
 	)

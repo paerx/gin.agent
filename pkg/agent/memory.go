@@ -13,6 +13,7 @@ type MemoryStore interface {
 	SetPendingAction(ctx context.Context, conversationID string, action PendingAction) error
 	GetPendingAction(ctx context.Context, conversationID string) (*PendingAction, error)
 	ClearPendingAction(ctx context.Context, conversationID string) error
+	ClearConversation(ctx context.Context, conversationID string) error
 	MarkMessageProcessed(ctx context.Context, platform, messageID string) (bool, error)
 }
 

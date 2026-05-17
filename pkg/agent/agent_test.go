@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -87,7 +88,7 @@ func TestAgentConfirmFlow(t *testing.T) {
 		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: srv.URL, InternalToken: "token"}),
 		PermissionChecker: auth.NewStaticChecker(),
 		Formatter:         agent.NewTextFormatter(),
-		RoleResolver:      agent.StaticRoleResolver{"user1": {"operator"}},
+		RoleResolver:      agent.StaticRoleResolver{"user1": {"operator", "readonly"}},
 		ConfirmTTL:        5 * time.Minute,
 	})
 
@@ -187,7 +188,7 @@ func TestAgentRejectsInvalidToolArguments(t *testing.T) {
 		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
 		PermissionChecker: auth.NewStaticChecker(),
 		Formatter:         agent.NewTextFormatter(),
-		RoleResolver:      agent.StaticRoleResolver{"user1": {"operator"}},
+		RoleResolver:      agent.StaticRoleResolver{"user1": {"operator", "readonly"}},
 		ConfirmTTL:        5 * time.Minute,
 	})
 
@@ -205,6 +206,253 @@ func TestAgentRejectsInvalidToolArguments(t *testing.T) {
 	if out.Text != "参数格式不正确，请检查后重试。" {
 		t.Fatalf("unexpected output = %s", out.Text)
 	}
+}
+
+func TestAgentCleanClearsOnlyCurrentConversation(t *testing.T) {
+	store := storage.NewMemoryStore(time.Hour, 30)
+	registry := ginai.NewRegistry()
+	agt := agent.New(agent.Config{
+		Registry:          registry,
+		Memory:            store,
+		Planner:           agent.NewRulePlanner(),
+		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
+		PermissionChecker: auth.NewStaticChecker(),
+		Formatter:         agent.NewTextFormatter(),
+		RoleResolver:      agent.StaticRoleResolver{"user1": {"readonly"}, "user2": {"readonly"}},
+	})
+
+	ctx := context.Background()
+	user1Conversation := agent.BuildConversationID("lark", "group", "chat1", "user1")
+	user2Conversation := agent.BuildConversationID("lark", "group", "chat1", "user2")
+	_ = store.AppendMessage(ctx, user1Conversation, agent.Message{Role: "user", Content: "u1"})
+	_ = store.SetState(ctx, user1Conversation, agent.SessionState{LastUserWallet: "0xabc"})
+	_ = store.AppendMessage(ctx, user2Conversation, agent.Message{Role: "user", Content: "u2"})
+	_ = store.SetState(ctx, user2Conversation, agent.SessionState{LastUserWallet: "0xdef"})
+
+	out, err := agt.HandleMessage(ctx, agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "group",
+		UserID:    "user1",
+		MessageID: "clean-msg",
+		Text:      "clean",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage(clean) error = %v", err)
+	}
+	if out.Text != "已清空你的上下文。" {
+		t.Fatalf("clean output = %s", out.Text)
+	}
+
+	user1State, _ := store.GetState(ctx, user1Conversation)
+	if user1State.LastUserWallet != "" {
+		t.Fatalf("user1 state still present: %#v", user1State)
+	}
+	user2State, _ := store.GetState(ctx, user2Conversation)
+	if user2State.LastUserWallet != "0xdef" {
+		t.Fatalf("user2 state was affected: %#v", user2State)
+	}
+}
+
+func TestOwnerCanManageUserRoles(t *testing.T) {
+	store := storage.NewMemoryStore(time.Hour, 30)
+	roleStore := agent.NewMemoryRoleStore(map[string][]string{
+		"owner1": {"owner", "admin", "operator", "readonly"},
+	})
+	registry := ginai.NewRegistry()
+	agt := agent.New(agent.Config{
+		Registry:          registry,
+		Memory:            store,
+		Planner:           agent.NewRulePlanner(),
+		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
+		PermissionChecker: auth.NewStaticChecker(),
+		Formatter:         agent.NewTextFormatter(),
+		RoleResolver:      roleStore,
+	})
+
+	out, err := agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "group",
+		UserID:    "owner1",
+		MessageID: "role-msg-1",
+		Text:      "add user user2 operator readonly",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage(add user) error = %v", err)
+	}
+	if !strings.Contains(out.Text, "operator") {
+		t.Fatalf("add user output = %s", out.Text)
+	}
+
+	roles, err := roleStore.Resolve(context.Background(), "lark", "user2")
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if !containsRole(roles, "operator") || !containsRole(roles, "readonly") {
+		t.Fatalf("roles = %#v", roles)
+	}
+}
+
+func TestUserCanRequestRolesAndOwnerCanApprove(t *testing.T) {
+	store := storage.NewMemoryStore(time.Hour, 30)
+	roleStore := agent.NewMemoryRoleStore(map[string][]string{
+		"owner1": {"owner", "admin", "operator", "readonly"},
+	})
+	agt := agent.New(agent.Config{
+		Registry:          ginai.NewRegistry(),
+		Memory:            store,
+		Planner:           agent.NewRulePlanner(),
+		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
+		PermissionChecker: auth.NewStaticChecker(),
+		Formatter:         agent.NewTextFormatter(),
+		RoleResolver:      roleStore,
+	})
+
+	out, err := agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:    "lark",
+		ChatID:      "chat1",
+		ChatType:    "group",
+		UserID:      "user2",
+		DisplayName: "Paer",
+		MessageID:   "request-role-msg",
+		Text:        "addme operator readonly",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage(addme) error = %v", err)
+	}
+	if !strings.Contains(out.Text, "已提交权限申请") || !strings.Contains(out.Text, "Paer") {
+		t.Fatalf("addme output = %s", out.Text)
+	}
+
+	requests, err := roleStore.ListRoleRequests(context.Background())
+	if err != nil {
+		t.Fatalf("ListRoleRequests() error = %v", err)
+	}
+	if len(requests) != 1 {
+		t.Fatalf("request count = %d", len(requests))
+	}
+
+	out, err = agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "group",
+		UserID:    "owner1",
+		MessageID: "approve-role-msg",
+		Text:      "approve " + requests[0].ID,
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage(approve) error = %v", err)
+	}
+	if !strings.Contains(out.Text, "已批准") {
+		t.Fatalf("approve output = %s", out.Text)
+	}
+
+	roles, err := roleStore.Resolve(context.Background(), "lark", "user2")
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if !containsRole(roles, "operator") || !containsRole(roles, "readonly") {
+		t.Fatalf("roles = %#v", roles)
+	}
+}
+
+func TestMyUserIDCommand(t *testing.T) {
+	agt := agent.New(agent.Config{
+		Registry:          ginai.NewRegistry(),
+		Memory:            storage.NewMemoryStore(time.Hour, 30),
+		Planner:           agent.NewRulePlanner(),
+		Invoker:           transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
+		PermissionChecker: auth.NewStaticChecker(),
+		Formatter:         agent.NewTextFormatter(),
+		RoleResolver:      agent.StaticRoleResolver{"user1": {"readonly"}},
+	})
+
+	out, err := agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:    "lark",
+		ChatID:      "chat1",
+		ChatType:    "group",
+		UserID:      "user1",
+		DisplayName: "Paer",
+		MessageID:   "my-user-id-msg",
+		Text:        "myuserid",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage(myuserid) error = %v", err)
+	}
+	if !strings.Contains(out.Text, "user1") || !strings.Contains(out.Text, "Paer") {
+		t.Fatalf("myuserid output = %s", out.Text)
+	}
+}
+
+func TestAgentWarnsWhenContextTooLong(t *testing.T) {
+	store := storage.NewMemoryStore(time.Hour, 30)
+	registry := ginai.NewRegistry()
+	agt := agent.New(agent.Config{
+		Registry:           registry,
+		Memory:             store,
+		Planner:            agent.NewRulePlanner(),
+		Invoker:            transport.NewHTTPInvoker(transport.HTTPInvokerConfig{BaseURL: "http://127.0.0.1:1"}),
+		PermissionChecker:  auth.NewStaticChecker(),
+		Formatter:          agent.NewTextFormatter(),
+		RoleResolver:       agent.StaticRoleResolver{"user1": {"readonly"}},
+		MaxContextMessages: 2,
+		MaxContextChars:    1000,
+	})
+
+	out, err := agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "p2p",
+		UserID:    "user1",
+		MessageID: "long-context-1",
+		Text:      "这是一条普通消息",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage first error = %v", err)
+	}
+	if out == nil || out.Text == "" {
+		t.Fatal("expected first output")
+	}
+
+	out, err = agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "p2p",
+		UserID:    "user1",
+		MessageID: "long-context-2",
+		Text:      "这是第二条普通消息",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage second error = %v", err)
+	}
+	if !strings.Contains(out.Text, "上下文") || !strings.Contains(out.Text, "clean") {
+		t.Fatalf("long context output = %s", out.Text)
+	}
+
+	out, err = agt.HandleMessage(context.Background(), agent.AgentInput{
+		Platform:  "lark",
+		ChatID:    "chat1",
+		ChatType:  "p2p",
+		UserID:    "user1",
+		MessageID: "long-context-clean",
+		Text:      "clean",
+	})
+	if err != nil {
+		t.Fatalf("HandleMessage clean error = %v", err)
+	}
+	if out.Text != "已清空你的上下文。" {
+		t.Fatalf("clean output = %s", out.Text)
+	}
+}
+
+func containsRole(roles []string, role string) bool {
+	for _, item := range roles {
+		if item == role {
+			return true
+		}
+	}
+	return false
 }
 
 type plannerFunc func(context.Context, agent.PlannerInput) (*agent.PlanResult, error)

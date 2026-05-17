@@ -41,7 +41,7 @@ func main() {
 	cfg := config.LoadFromEnv()
 
 	registry := ginai.NewRegistry()
-	binder := ginai.NewBinder(registry)
+	ginAgent := ginai.NewBinder(registry)
 	registerDemoTools(registry)
 
 	memoryStore := buildMemoryStore(cfg)
@@ -57,20 +57,26 @@ func main() {
 		InternalToken: cfg.GinAI.InternalToken,
 	})
 	roleResolver := agent.StaticRoleResolver{
-		"admin-user":    {"admin", "operator", "readonly"},
+		"admin-user":    {"owner", "admin", "operator", "readonly"},
 		"operator-user": {"operator", "readonly"},
-		"ea1g74bc":      {"admin", "operator", "readonly"},
+		"ea1g74bc":      {"owner", "admin", "operator", "readonly"},
 	}
+	if ownerUserID := os.Getenv("GINAI_OWNER_USER_ID"); ownerUserID != "" {
+		roleResolver[ownerUserID] = []string{"owner", "admin", "operator", "readonly"}
+	}
+	roleStore := agent.NewMemoryRoleStore(roleResolver)
 
 	botAgent := agent.New(agent.Config{
-		Registry:          registry,
-		Memory:            memoryStore,
-		Planner:           planner,
-		Invoker:           invoker,
-		PermissionChecker: auth.NewStaticChecker(),
-		Formatter:         agent.NewTextFormatter(),
-		AuditStore:        auditStore,
-		RoleResolver:      roleResolver,
+		Registry:           registry,
+		Memory:             memoryStore,
+		Planner:            planner,
+		Invoker:            invoker,
+		PermissionChecker:  auth.NewStaticChecker(),
+		Formatter:          agent.NewTextFormatter(),
+		AuditStore:         auditStore,
+		RoleResolver:       roleStore,
+		MaxContextMessages: cfg.GinAI.MaxContextMessages,
+		MaxContextChars:    cfg.GinAI.MaxContextChars,
 	})
 
 	httpSender := lark.NewHTTPSender(lark.HTTPSenderConfig{
@@ -88,8 +94,8 @@ func main() {
 	router.POST("/lark/events", bot.HandleEvent)
 
 	api := router.Group("/api")
-	api.GET("/getUserinfo", binder.Bind(*getUserInfoTool()), getUserInfoHandler)
-	api.POST("/updateUserinfo", binder.Bind(*updateUserInfoTool()), updateUserInfoHandler)
+	api.GET("/getUserinfo", ginAgent.Bind(*getUserInfoTool()), getUserInfoHandler)
+	api.POST("/updateUserinfo", ginAgent.Bind(*updateUserInfoTool()), updateUserInfoHandler)
 
 	if cfg.Lark.EventMode == "ws" {
 		go func() {

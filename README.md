@@ -77,6 +77,53 @@ Configuration is loaded from environment variables in [pkg/config/config.go](/Us
 - `GINAI_INTERNAL_TOKEN`: default `dev-internal-token`
 - `GINAI_CONTEXT_TTL`: default `168h`
 - `GINAI_MAX_HISTORY`: default `30`
+- `GINAI_MAX_CONTEXT_MESSAGES`: default `28`; prompt user to `clean` when exceeded
+- `GINAI_MAX_CONTEXT_CHARS`: default `12000`; prompt user to `clean` when exceeded
+- `GINAI_OWNER_USER_ID`: grants one Lark user `owner, admin, operator, readonly` in the demo
+
+## Built-In Commands
+
+Every user has isolated memory. Private chats use `platform + user_id`; group chats use `platform + chat_id + user_id`, so one group member cannot pollute another member's context.
+
+Any user can clear their own memory:
+
+```text
+clean
+```
+
+Any user can ask the bot for their own Lark user ID:
+
+```text
+myuserid
+```
+
+Users can request roles without knowing their user ID:
+
+```text
+addme operator readonly
+```
+
+The bot replies with a request ID plus the applicant's user ID. The owner or admin can approve or reject it:
+
+```text
+approve <request_id>
+reject <request_id>
+requests
+```
+
+The owner or admin can also manage demo roles directly in a group or private chat:
+
+```text
+add user <user_id> operator readonly
+remove user <user_id>
+roles <user_id>
+```
+
+For the demo, set yourself as owner before starting:
+
+```bash
+export GINAI_OWNER_USER_ID=你的_lark_user_id
+```
 
 ## Registering Tools
 

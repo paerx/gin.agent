@@ -1,12 +1,13 @@
 package agent
 
 type AgentInput struct {
-	Platform  string `json:"platform"`
-	ChatID    string `json:"chat_id"`
-	ChatType  string `json:"chat_type"`
-	UserID    string `json:"user_id"`
-	MessageID string `json:"message_id"`
-	Text      string `json:"text"`
+	Platform    string `json:"platform"`
+	ChatID      string `json:"chat_id"`
+	ChatType    string `json:"chat_type"`
+	UserID      string `json:"user_id"`
+	DisplayName string `json:"display_name,omitempty"`
+	MessageID   string `json:"message_id"`
+	Text        string `json:"text"`
 }
 
 type AgentOutput struct {

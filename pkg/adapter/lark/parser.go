@@ -24,12 +24,13 @@ func ParseAgentInput(req EventRequest) (*agent.AgentInput, bool, error) {
 		userID = req.Event.Sender.SenderID.OpenID
 	}
 	return &agent.AgentInput{
-		Platform:  "lark",
-		ChatID:    req.Event.Message.ChatID,
-		ChatType:  normalizeChatType(req.Event.Message.ChatType),
-		UserID:    userID,
-		MessageID: req.Event.Message.MessageID,
-		Text:      strings.TrimSpace(content.Text),
+		Platform:    "lark",
+		ChatID:      req.Event.Message.ChatID,
+		ChatType:    normalizeChatType(req.Event.Message.ChatType),
+		UserID:      userID,
+		DisplayName: userID,
+		MessageID:   req.Event.Message.MessageID,
+		Text:        strings.TrimSpace(content.Text),
 	}, false, nil
 }
 

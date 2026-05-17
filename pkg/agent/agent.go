@@ -28,27 +28,31 @@ func (s StaticRoleResolver) Resolve(_ context.Context, _ string, userID string) 
 }
 
 type Config struct {
-	Registry          *ginai.Registry
-	Memory            MemoryStore
-	Planner           Planner
-	Invoker           transport.Invoker
-	PermissionChecker auth.PermissionChecker
-	Formatter         Formatter
-	AuditStore        audit.Store
-	RoleResolver      RoleResolver
-	ConfirmTTL        time.Duration
+	Registry           *ginai.Registry
+	Memory             MemoryStore
+	Planner            Planner
+	Invoker            transport.Invoker
+	PermissionChecker  auth.PermissionChecker
+	Formatter          Formatter
+	AuditStore         audit.Store
+	RoleResolver       RoleResolver
+	ConfirmTTL         time.Duration
+	MaxContextMessages int
+	MaxContextChars    int
 }
 
 type DefaultAgent struct {
-	registry          *ginai.Registry
-	memory            MemoryStore
-	planner           Planner
-	invoker           transport.Invoker
-	permissionChecker auth.PermissionChecker
-	formatter         Formatter
-	auditStore        audit.Store
-	roleResolver      RoleResolver
-	confirmTTL        time.Duration
+	registry           *ginai.Registry
+	memory             MemoryStore
+	planner            Planner
+	invoker            transport.Invoker
+	permissionChecker  auth.PermissionChecker
+	formatter          Formatter
+	auditStore         audit.Store
+	roleResolver       RoleResolver
+	confirmTTL         time.Duration
+	maxContextMessages int
+	maxContextChars    int
 }
 
 func New(cfg Config) *DefaultAgent {
@@ -60,16 +64,26 @@ func New(cfg Config) *DefaultAgent {
 	if formatter == nil {
 		formatter = NewTextFormatter()
 	}
+	maxContextMessages := cfg.MaxContextMessages
+	if maxContextMessages <= 0 {
+		maxContextMessages = 28
+	}
+	maxContextChars := cfg.MaxContextChars
+	if maxContextChars <= 0 {
+		maxContextChars = 12000
+	}
 	return &DefaultAgent{
-		registry:          cfg.Registry,
-		memory:            cfg.Memory,
-		planner:           cfg.Planner,
-		invoker:           cfg.Invoker,
-		permissionChecker: cfg.PermissionChecker,
-		formatter:         formatter,
-		auditStore:        cfg.AuditStore,
-		roleResolver:      cfg.RoleResolver,
-		confirmTTL:        ttl,
+		registry:           cfg.Registry,
+		memory:             cfg.Memory,
+		planner:            cfg.Planner,
+		invoker:            cfg.Invoker,
+		permissionChecker:  cfg.PermissionChecker,
+		formatter:          formatter,
+		auditStore:         cfg.AuditStore,
+		roleResolver:       cfg.RoleResolver,
+		confirmTTL:         ttl,
+		maxContextMessages: maxContextMessages,
+		maxContextChars:    maxContextChars,
 	}
 }
 
@@ -93,6 +107,13 @@ func (a *DefaultAgent) HandleMessage(ctx context.Context, input AgentInput) (*Ag
 		return nil, err
 	}
 
+	if result := a.handleBuiltinCommand(ctx, input, conversationID, roles); result.Handled {
+		if result.Err != nil {
+			return nil, result.Err
+		}
+		return &AgentOutput{Text: result.Text}, nil
+	}
+
 	trimmedText := strings.TrimSpace(input.Text)
 	switch trimmedText {
 	case "确认":
@@ -104,6 +125,9 @@ func (a *DefaultAgent) HandleMessage(ctx context.Context, input AgentInput) (*Ag
 	messages, err := a.memory.GetMessages(ctx, conversationID, 30)
 	if err != nil {
 		return nil, err
+	}
+	if a.isContextTooLong(messages) {
+		return &AgentOutput{Text: "你的上下文有点长了，为了避免理解偏差，请先发送 clean 清空上下文后再继续。"}, nil
 	}
 
 	plan, err := a.planner.Plan(ctx, PlannerInput{
@@ -137,6 +161,17 @@ func (a *DefaultAgent) HandleMessage(ctx context.Context, input AgentInput) (*Ag
 	default:
 		return &AgentOutput{Text: "我没理解你要执行哪个操作，可以再说具体一点吗？"}, nil
 	}
+}
+
+func (a *DefaultAgent) isContextTooLong(messages []Message) bool {
+	if len(messages) > a.maxContextMessages {
+		return true
+	}
+	totalChars := 0
+	for _, message := range messages {
+		totalChars += len([]rune(message.Content))
+	}
+	return totalChars > a.maxContextChars
 }
 
 func (a *DefaultAgent) handleToolCall(ctx context.Context, input AgentInput, conversationID string, state SessionState, roles []string, call *ToolCall) (*AgentOutput, error) {

@@ -103,6 +103,16 @@ func (s *MemoryStore) ClearPendingAction(_ context.Context, conversationID strin
 	return nil
 }
 
+func (s *MemoryStore) ClearConversation(_ context.Context, conversationID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.messages, conversationID)
+	delete(s.state, conversationID)
+	delete(s.pending, conversationID)
+	delete(s.stateExpiry, conversationID)
+	return nil
+}
+
 func (s *MemoryStore) MarkMessageProcessed(_ context.Context, platform, messageID string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

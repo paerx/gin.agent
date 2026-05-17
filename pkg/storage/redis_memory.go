@@ -120,6 +120,10 @@ func (s *RedisMemoryStore) ClearPendingAction(ctx context.Context, conversationI
 	return s.client.Del(ctx, s.pendingKey(conversationID)).Err()
 }
 
+func (s *RedisMemoryStore) ClearConversation(ctx context.Context, conversationID string) error {
+	return s.client.Del(ctx, s.messagesKey(conversationID), s.stateKey(conversationID), s.pendingKey(conversationID)).Err()
+}
+
 func (s *RedisMemoryStore) MarkMessageProcessed(ctx context.Context, platform, messageID string) (bool, error) {
 	ok, err := s.client.SetNX(ctx, fmt.Sprintf("ai:%s:msg:%s", platform, messageID), "1", 24*time.Hour).Result()
 	return ok, err

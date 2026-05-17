@@ -62,4 +62,15 @@ func TestRedisMemoryStore(t *testing.T) {
 	if gotPending == nil || gotPending.ToolName != "update_user" {
 		t.Fatalf("pending action = %#v", gotPending)
 	}
+
+	if err := store.ClearConversation(ctx, conversationID); err != nil {
+		t.Fatalf("ClearConversation() error = %v", err)
+	}
+	messages, err = store.GetMessages(ctx, conversationID, 10)
+	if err != nil {
+		t.Fatalf("GetMessages() after clear error = %v", err)
+	}
+	if len(messages) != 0 {
+		t.Fatalf("messages after clear = %#v", messages)
+	}
 }

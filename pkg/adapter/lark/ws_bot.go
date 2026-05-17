@@ -55,11 +55,12 @@ func (b *LongConnectionBot) Start(ctx context.Context) error {
 				return nil
 			}
 			log.Printf(
-				"[lark event] platform=%s chat_id=%s chat_type=%s user_id=%s message_id=%s text=%q",
+				"[lark event] platform=%s chat_id=%s chat_type=%s user_id=%s display_name=%s message_id=%s text=%q",
 				input.Platform,
 				input.ChatID,
 				input.ChatType,
 				input.UserID,
+				input.DisplayName,
 				input.MessageID,
 				input.Text,
 			)
@@ -110,12 +111,13 @@ func AgentInputFromP2MessageReceiveV1(event *larkim.P2MessageReceiveV1) (*agent.
 	}
 
 	return &agent.AgentInput{
-		Platform:  "lark",
-		ChatID:    ptrValue(message.ChatId),
-		ChatType:  normalizeChatType(ptrValue(message.ChatType)),
-		UserID:    userID,
-		MessageID: ptrValue(message.MessageId),
-		Text:      strings.TrimSpace(content.Text),
+		Platform:    "lark",
+		ChatID:      ptrValue(message.ChatId),
+		ChatType:    normalizeChatType(ptrValue(message.ChatType)),
+		UserID:      userID,
+		DisplayName: userID,
+		MessageID:   ptrValue(message.MessageId),
+		Text:        strings.TrimSpace(content.Text),
 	}, false, nil
 }
 
