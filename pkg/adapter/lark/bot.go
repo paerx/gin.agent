@@ -9,6 +9,7 @@ import (
 	"github.com/paerx/gin.agent/pkg/agent"
 
 	"github.com/gin-gonic/gin"
+	larkevent "github.com/larksuite/oapi-sdk-go/v3/event"
 )
 
 type Bot struct {
@@ -33,12 +34,22 @@ func (b *Bot) HandleEvent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	plainBody, err := b.plainEventBody(body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	var event EventRequest
-	if err := json.Unmarshal(body, &event); err != nil {
+	if err := json.Unmarshal(plainBody, &event); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if event.Type == "url_verification" {
+		if b.verificationToken != "" && event.Token != "" && event.Token != b.verificationToken {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid verification token"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"challenge": event.Challenge})
 		return
 	}
@@ -89,4 +100,19 @@ func (b *Bot) HandleEvent(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func (b *Bot) plainEventBody(body []byte) ([]byte, error) {
+	if b.encryptKey == "" {
+		return body, nil
+	}
+
+	var encrypted larkevent.EventEncryptMsg
+	if err := json.Unmarshal(body, &encrypted); err != nil {
+		return nil, err
+	}
+	if encrypted.Encrypt == "" {
+		return body, nil
+	}
+	return larkevent.EventDecrypt(encrypted.Encrypt, b.encryptKey)
 }

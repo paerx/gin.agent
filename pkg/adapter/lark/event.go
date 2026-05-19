@@ -2,6 +2,7 @@ package lark
 
 type EventRequest struct {
 	Type      string `json:"type"`
+	Token     string `json:"token"`
 	Challenge string `json:"challenge"`
 	Header    struct {
 		EventID    string `json:"event_id"`
