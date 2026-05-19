@@ -95,7 +95,8 @@ func (b *Bot) HandleEvent(c *gin.Context) {
 	}
 	if output != nil && output.Text != "" && b.sender != nil {
 		if err := b.sender.SendText(c.Request.Context(), input.ChatID, output.Text); err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			log.Printf("[lark send error] chat_id=%s message_id=%s error=%v", input.ChatID, input.MessageID, err)
+			c.JSON(http.StatusOK, gin.H{"ok": true, "send_error": err.Error()})
 			return
 		}
 	}
